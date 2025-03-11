@@ -82,7 +82,7 @@ model.compile(optimizer='adam',
               metrics=['accuracy'])
 
 # Train model using NumPy arrays
-model.fit(data_train, labels_train, epochs=10, batch_size=32, validation_data=(data_test, labels_test))
+history = model.fit(data_train, labels_train, epochs=50, batch_size=32, validation_data=(data_test, labels_test))
 
 model.save("mask_detection_model.h5")
 print("save successfully")
@@ -116,9 +116,10 @@ for i, idx in enumerate(random_indices):
 plt.tight_layout()
 plt.show()
 
+print("asdasd",model.history.history.keys())
 
-plt.plot(model.history.history['accuracy'], label='Train Accuracy')
-plt.plot(model.history.history['val_accuracy'], label='Validation Accuracy')
+plt.plot(history.history['accuracy'], label='Train Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
 plt.xlabel('Epochs')
 plt.ylabel('Accuracy')
 plt.legend()
@@ -132,10 +133,3 @@ preds = (model.predict(data_test) > 0.5).astype(int)  # Convert probabilities to
 print(classification_report(labels_test, preds, target_names=["With Mask", "Without Mask"]))
 
 
-plt.plot(model.history.history['accuracy'], label='Train Accuracy')
-plt.plot(model.history.history['val_accuracy'], label='Validation Accuracy')
-plt.xlabel('Epochs')
-plt.ylabel('Accuracy')
-plt.legend()
-plt.title('Training vs Validation Accuracy')
-plt.show()

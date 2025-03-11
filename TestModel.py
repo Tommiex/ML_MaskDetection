@@ -22,7 +22,7 @@ model = load_model("mask_detection_model.h5")
 print("Model loaded successfully!")
 
 #Test with an image
-image_path = "archive\data\without_mask\without_mask_5.jpg"  # Set your image path here
+image_path = "IMG_20250312_032022_714.jpg"  # Set your image path here
 img = prepare_image(image_path)
 
 #Predict using the model
