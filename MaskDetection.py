@@ -2,6 +2,10 @@ import os
 import cv2
 import numpy as np
 from sklearn.utils import shuffle
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+from tensorflow.keras.models import load_model
 
 DATASET_PATH = "archive\data"
 CATEGORIES = ["with_mask", "without_mask"]  # Define labels
@@ -23,6 +27,7 @@ def load_dataset(dataset_path, categories, img_size=(224, 224)):
             try:
                 img = cv2.imread(img_path)
                 img = cv2.resize(img, img_size)  # ปรับขนาดรูปภาพให้เหมาะกับโมเดล
+                img = (img / 127.5) - 1 #Normalize
                 data.append(img)
                 labels.append(label)
 
@@ -44,4 +49,39 @@ labels_train, labels_test = labels[:split_index], labels[split_index:]
 
 print(f"Train data: {data_train.shape}, Train labels: {labels_train.shape}")
 print(f"Test data: {data_test.shape}, Test labels: {labels_test.shape}")
-            
+
+
+
+# Define the CNN architecture
+model = keras.Sequential([
+    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(224, 224, 3)),
+    layers.MaxPooling2D((2, 2)),
+
+    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+
+    layers.Conv2D(128, (3, 3), activation='relu'),
+    layers.MaxPooling2D((2, 2)),
+
+    layers.Flatten(),
+    layers.Dense(128, activation='relu'),
+    layers.Dropout(0.5),  # Regularization to prevent overfitting
+    layers.Dense(1, activation='sigmoid')  # Binary classification (Mask vs. No Mask)
+])
+
+model.summary()  # Print model architecture
+
+# Compile model
+model.compile(optimizer='adam',
+              loss='binary_crossentropy',
+              metrics=['accuracy'])
+
+# Train model using NumPy arrays
+model.fit(data_train, labels_train, epochs=10, batch_size=32, validation_data=(data_test, labels_test))
+
+model.save("mask_detection_model.h5")
+print("save successfully")
+
+model = load_model("mask_detection_model.h5")
+print("loaded successfully!")
+
