@@ -17,17 +17,17 @@ def load_dataset(dataset_path, categories, img_size=(224, 224)):
 
     for category in categories:
         folder_path = os.path.join(dataset_path, category)
-        label = categories.index(category) # Assign label (0 or 1)
-    
-    # วนลูปเพื่อดึงชื่อไฟล์รูปภาพจากโฟลเดอร์
-    for img_name in os.listdir(folder_path):
+        label = categories.index(category)  # Assign label (0 or 1)
+        num_files = len(os.listdir(folder_path))
+        print(f"Number of images in {category}: {num_files}")
+
+        # วนลูปเพื่อดึงชื่อไฟล์รูปภาพจากโฟลเดอร์
+        for img_name in os.listdir(folder_path):
             img_path = os.path.join(folder_path, img_name)
             img = cv2.imread(img_path)
 
             try:
-                img = cv2.imread(img_path)
                 img = cv2.resize(img, img_size)  # ปรับขนาดรูปภาพให้เหมาะกับโมเดล
-                img = (img / 127.5) - 1 #Normalize
                 data.append(img)
                 labels.append(label)
 
@@ -40,6 +40,7 @@ def load_dataset(dataset_path, categories, img_size=(224, 224)):
 
     return data, labels
 
+
 data, labels = load_dataset(DATASET_PATH, CATEGORIES)
 data, labels = shuffle(data, labels, random_state=42) # สุ่มลำดับของข้อมูล random_state=42 ใช้กำหนดค่าการสุ่มให้ได้ผลลัพธ์เดิมทุกครั้ง
 
@@ -50,7 +51,10 @@ labels_train, labels_test = labels[:split_index], labels[split_index:]
 print(f"Train data: {data_train.shape}, Train labels: {labels_train.shape}")
 print(f"Test data: {data_test.shape}, Test labels: {labels_test.shape}")
 
-
+# เพิ่มการพิมพ์จำนวนข้อมูล
+print(f"Total images: {len(data)}")
+print(f"Training data: {len(data_train)}")
+print(f"Testing data: {len(data_test)}")
 
 # Define the CNN architecture
 model = keras.Sequential([
