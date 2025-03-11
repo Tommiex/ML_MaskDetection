@@ -27,6 +27,7 @@ def load_dataset(dataset_path, categories, img_size=(224, 224)):
             img = cv2.imread(img_path)
 
             try:
+                img = cv2.imread(img_path)
                 img = cv2.resize(img, img_size)  # ปรับขนาดรูปภาพให้เหมาะกับโมเดล
                 data.append(img)
                 labels.append(label)
@@ -40,7 +41,6 @@ def load_dataset(dataset_path, categories, img_size=(224, 224)):
 
     return data, labels
 
-
 data, labels = load_dataset(DATASET_PATH, CATEGORIES)
 data, labels = shuffle(data, labels, random_state=42) # สุ่มลำดับของข้อมูล random_state=42 ใช้กำหนดค่าการสุ่มให้ได้ผลลัพธ์เดิมทุกครั้ง
 print(np.array(data).shape)  # ✅ Correct, prints dataset shape
@@ -52,18 +52,11 @@ labels_train, labels_test = labels[:split_index], labels[split_index:]
 print(f"Train data: {data_train.shape}, Train labels: {labels_train.shape}")
 print(f"Test data: {data_test.shape}, Test labels: {labels_test.shape}")
 
-<<<<<<< HEAD
 
 print(f"Total images: {len(data)}")
 print(f"Training set: {len(data_train)}")
 print(f"Testing set: {len(data_test)}")
-=======
-# เพิ่มการพิมพ์จำนวนข้อมูล
-print(f"Total images: {len(data)}")
-print(f"Training data: {len(data_train)}")
-print(f"Testing data: {len(data_test)}")
 
->>>>>>> 26af991567105fcb8d3ef6b8fdd1ae695049524b
 # Define the CNN architecture
 model = keras.Sequential([
     layers.Conv2D(32, (3, 3), activation='relu', input_shape=(224, 224, 3)),
@@ -88,18 +81,8 @@ model.compile(optimizer='adam',
               loss='binary_crossentropy',
               metrics=['accuracy'])
 
-batch_size = 32  # Make sure it's reasonable for your dataset
-steps_per_epoch = len(data_train) // batch_size
-validation_steps = len(data_test) // batch_size
-
-model.fit(
-    data_train, labels_train, 
-    epochs=10, batch_size=batch_size, 
-    validation_data=(data_test, labels_test),
-    steps_per_epoch=steps_per_epoch,
-    validation_steps=validation_steps
-)
-
+# Train model using NumPy arrays
+model.fit(data_train, labels_train, epochs=10, batch_size=32, validation_data=(data_test, labels_test))
 
 model.save("mask_detection_model.h5")
 print("save successfully")
