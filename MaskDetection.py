@@ -2,7 +2,7 @@ import os
 import cv2
 import numpy as np
 
-dataset_path = "archive"
+dataset_path = "archive\data"
 categories = ["with_mask", "without_mask"]  # Define labels
 data = []
 labels = []
@@ -24,4 +24,8 @@ labels = np.array(labels)
 
 # Shuffle data
 from sklearn.utils import shuffle
-data, labels = shuffle(data, labels, random_state=42)
+data, labels = shuffle(data, labels, random_state=42)   
+
+data_train = data[:70]
+data_test = data[:30]
+
