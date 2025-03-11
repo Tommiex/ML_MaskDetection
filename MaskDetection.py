@@ -4,8 +4,11 @@ import numpy as np
 from sklearn.utils import shuffle
 import tensorflow as tf
 from tensorflow import keras
+from tensorflow.keras.callbacks import ReduceLROnPlateau    
 from tensorflow.keras import layers
 from tensorflow.keras.models import load_model
+import random
+import matplotlib.pyplot as plt
 
 DATASET_PATH = "archive\data"
 CATEGORIES = ["with_mask", "without_mask"]  # Define labels
@@ -82,7 +85,8 @@ model.compile(optimizer='adam',
               metrics=['accuracy'])
 
 # Train model using NumPy arrays
-model.fit(data_train, labels_train, epochs=10, batch_size=32, validation_data=(data_test, labels_test))
+lr_scheduler = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=0.0001)
+model.fit(data_train, labels_train, epochs=10, batch_size=32, validation_data=(data_test, labels_test), callbacks=[lr_scheduler])
 
 model.save("mask_detection_model.h5")
 print("save successfully")
@@ -93,14 +97,11 @@ print("loaded successfully!")
 test_loss, test_acc = model.evaluate(data_test, labels_test)
 print(f"Test Accuracy: {test_acc:.2%}")
 
-
-import random
-import matplotlib.pyplot as plt
-
 # Select 10 random test images
 random_indices = random.sample(range(len(data_test)), 10)
 
 plt.figure(figsize=(10, 5))
+
 for i, idx in enumerate(random_indices):
     sample_img = np.expand_dims(data_test[idx], axis=0)  # Add batch dimension
     prediction = model.predict(sample_img)[0][0]  # Get prediction score
