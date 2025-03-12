@@ -1,75 +1,79 @@
-import os
 import cv2
 import numpy as np
 from tensorflow.keras.models import load_model
-import random
-
-
-# Prepare image function
-def prepare_image(image_path, img_size=(224, 224)):
-    # Check if the file exists
-    if not os.path.exists(image_path):
-        print(f"Error: {image_path} does not exist.")
-        return None
-
-    # Read image from file
-    img = cv2.imread(image_path)
-
-    # Resize image to 224x224
-    img = cv2.resize(img, img_size)
-
-    # Normalize image (use the same normalization as in training)
-    img = img / 255.0  # Normalize the image to [0, 1]
-
-    # Add batch dimension
-    img = np.expand_dims(img, axis=0)
-
-    return img
-
 
 # Load the trained model
 model = load_model("mask_detection_model.h5")
 print("Model loaded successfully!")
 
-# Define dataset path
-with_mask_path = "archive/data/with_mask"
-without_mask_path = "archive/data/without_mask"
+# Load the DNN Face Detector
+face_net = cv2.dnn.readNetFromCaffe(
+    "deploy.prototxt",
+    "res10_300x300_ssd_iter_140000.caffemodel"
+)
 
-# Get all image filenames from both categories
-with_mask_files = os.listdir(with_mask_path)
-without_mask_files = os.listdir(without_mask_path)
+def prepare_image(face, img_size=(224, 224)):
+    """ Prepares the detected face image for model prediction. """
+    face = cv2.resize(face, img_size)
+    face = face / 255.0  # Normalize
+    face = np.expand_dims(face, axis=0)  # Add batch dimension
+    return face
 
-# Shuffle and select 50 random images from each category
-with_mask_selected = random.sample(with_mask_files, 50)
-without_mask_selected = random.sample(without_mask_files, 50)
+def find_working_camera():
+    """ Checks available camera indexes and returns the first working one. """
+    for i in range(5):  # Check first 5 camera indexes
+        cap = cv2.VideoCapture(i)
+        if cap.read()[0]:
+            cap.release()
+            return i
+    return -1
 
-# Combine both selected lists
-selected_images = with_mask_selected + without_mask_selected
-random.shuffle(selected_images)  # Shuffle the selected images to randomize the output
+# Open a working webcam
+camera_index = find_working_camera()
+if camera_index == -1:
+    print("❌ No working camera found!")
+    exit()
 
-# Iterate over selected images and make predictions
-for image_name in selected_images:
-    # Create the full path to the image
-    if image_name in with_mask_selected:
-        image_path = os.path.join(with_mask_path, image_name)
-        label = "🟢"  # with_mask category symbol
-    else:
-        image_path = os.path.join(without_mask_path, image_name)
-        label = "🔴"  # without_mask category symbol
+cap = cv2.VideoCapture(camera_index)
+print(f"🎥 Using camera index: {camera_index}")
 
-    # Prepare image for prediction
-    img = prepare_image(image_path)
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
 
-    if img is not None:
-        # Make a prediction
-        prediction = model.predict(img)
+    # Convert frame to blob for DNN model
+    h, w = frame.shape[:2]
+    blob = cv2.dnn.blobFromImage(frame, 1.0, (300, 300), (104.0, 177.0, 123.0))
+    face_net.setInput(blob)
+    detections = face_net.forward()
 
-        # Check if the prediction is greater than or equal to 0.5
-        if prediction >= 0.5:
-            print(
-                f"{image_name} {label} - Predicted: Without Mask 🔴"
-            )  # Predicted as "Without Mask"
-        else:
-            print(
-                f"{image_name} {label} - Predicted: With Mask 🟢"
-            )  # Predicted as "With Mask"
+    for i in range(detections.shape[2]):
+        confidence = detections[0, 0, i, 2]
+        if confidence > 0.3:  # Confidence threshold
+            box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
+            (x, y, x_max, y_max) = box.astype("int")
+
+            face = frame[y:y_max, x:x_max]  # Extract face region
+            if face.shape[0] > 50 and face.shape[1] > 50:
+                prepared_face = prepare_image(face)
+                prediction = model.predict(prepared_face)[0][0]
+
+                # Determine label and color
+                label = "No Mask" if prediction > 0.4 else "Mask"
+                color = (0, 0, 255) if prediction > 0.5 else (0, 255, 0)
+
+                # Draw rectangle and label
+                cv2.rectangle(frame, (x, y), (x_max, y_max), color, 2)
+                cv2.putText(frame, label, (x, y - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+
+    # Show frame
+    cv2.imshow("Mask Detection", frame)
+
+    # Press 'q' to exit
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+cap.release()
+cv2.destroyAllWindows()
