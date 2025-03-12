@@ -9,6 +9,9 @@ from tensorflow.keras import layers
 from tensorflow.keras.models import load_model
 import random
 import matplotlib.pyplot as plt
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.regularizers import l2
+from tensorflow.keras.layers import Dropout
 
 DATASET_PATH = "archive\data"
 CATEGORIES = ["with_mask", "without_mask"]  # Define labels
@@ -60,19 +63,33 @@ print(f"Total images: {len(data)}")
 print(f"Training set: {len(data_train)}")
 print(f"Testing set: {len(data_test)}")
 
+# Define data augmentation
+datagen = ImageDataGenerator(
+    rotation_range=20,  # Rotate images randomly up to 20 degrees
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True,
+    fill_mode='nearest'
+)
+
+# Fit data generator to training data
+datagen.fit(data_train)
 # Define the CNN architecture
 model = keras.Sequential([
-    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(224, 224, 3)),
+    layers.Conv2D(16, (3, 3), activation='relu', input_shape=(224, 224, 3), kernel_regularizer=l2(0.01)),
+    Dropout(0.3),
     layers.MaxPooling2D((2, 2)),
 
-    layers.Conv2D(64, (3, 3), activation='relu'),
+    layers.Conv2D(32, (3, 3), activation='relu', kernel_regularizer=l2(0.01)),
     layers.MaxPooling2D((2, 2)),
-
-    layers.Conv2D(128, (3, 3), activation='relu'),
+    Dropout(0.3),
+    layers.Conv2D(64, (3, 3), activation='relu', kernel_regularizer=l2(0.01)),
     layers.MaxPooling2D((2, 2)),
-
+    Dropout(0.3),
     layers.Flatten(),
-    layers.Dense(128, activation='relu'),
+    layers.Dense(64, activation='relu'),
     layers.Dropout(0.5),  # Regularization to prevent overfitting
     layers.Dense(1, activation='sigmoid')  # Binary classification (Mask vs. No Mask)
 ])
@@ -86,7 +103,7 @@ model.compile(optimizer='adam',
 
 # Train model using NumPy arrays
 lr_scheduler = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=0.0001)
-history = model.fit(data_train, labels_train, epochs=50, batch_size=32, validation_data=(data_test, labels_test), callbacks=[lr_scheduler])
+history = model.fit(data_train, labels_train, epochs=20, batch_size=16, validation_data=(data_test, labels_test), callbacks=[lr_scheduler])
 
 
 model.save("mask_detection_model.h5")
