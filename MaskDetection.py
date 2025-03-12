@@ -48,7 +48,7 @@ def load_dataset(dataset_path, categories, img_size=(224, 224)):
     return data, labels
 
 data, labels = load_dataset(DATASET_PATH, CATEGORIES)
-data, labels = shuffle(data, labels, random_state=42) # สุ่มลำดับของข้อมูล random_state=42 ใช้กำหนดค่าการสุ่มให้ได้ผลลัพธ์เดิมทุกครั้ง
+data, labels = shuffle(data, labels, random_state=42) #  สุ่มลำดับของข้อมูล random_state=42 ใช้กำหนดค่าการสุ่มให้ได้ผลลัพธ์เดิมทุกครั้ง
 print(np.array(data).shape)  # ✅ Correct, prints dataset shape
 
 split_index = int(0.7 * len(data)) # split_index = 70% ของข้อมูลทั้งหมด ตามหลัก 70 เทรน / 30 ทดสอบ
@@ -79,12 +79,12 @@ datagen.fit(data_train)
 # Define the CNN architecture
 model = keras.Sequential([
     layers.Conv2D(16, (3, 3), activation='relu', input_shape=(224, 224, 3), kernel_regularizer=l2(0.01)),
-    Dropout(0.3),
+    Dropout(0.5),
     layers.MaxPooling2D((2, 2)),
 
     layers.Conv2D(32, (3, 3), activation='relu', kernel_regularizer=l2(0.01)),
     layers.MaxPooling2D((2, 2)),
-    Dropout(0.3),
+    Dropout(0.5),
     layers.Conv2D(64, (3, 3), activation='relu', kernel_regularizer=l2(0.01)),
     layers.MaxPooling2D((2, 2)),
     Dropout(0.3),
@@ -103,7 +103,7 @@ model.compile(optimizer='adam',
 
 # Train model using NumPy arrays
 lr_scheduler = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=0.0001)
-history = model.fit(data_train, labels_train, epochs=20, batch_size=16, validation_data=(data_test, labels_test), callbacks=[lr_scheduler])
+history = model.fit(data_train, labels_train, epochs=20, batch_size=14, validation_data=(data_test, labels_test), callbacks=[lr_scheduler])
 
 
 model.save("mask_detection_model.h5")
@@ -134,8 +134,6 @@ for i, idx in enumerate(random_indices):
 
 plt.tight_layout()
 plt.show()
-
-print("asdasd",model.history.history.keys())
 
 plt.plot(history.history['accuracy'], label='Train Accuracy')
 plt.plot(history.history['val_accuracy'], label='Validation Accuracy')

@@ -1,75 +1,62 @@
-import os
 import cv2
 import numpy as np
 from tensorflow.keras.models import load_model
-import random
-
-
-# Prepare image function
-def prepare_image(image_path, img_size=(224, 224)):
-    # Check if the file exists
-    if not os.path.exists(image_path):
-        print(f"Error: {image_path} does not exist.")
-        return None
-
-    # Read image from file
-    img = cv2.imread(image_path)
-
-    # Resize image to 224x224
-    img = cv2.resize(img, img_size)
-
-    # Normalize image (use the same normalization as in training)
-    img = img / 255.0  # Normalize the image to [0, 1]
-
-    # Add batch dimension
-    img = np.expand_dims(img, axis=0)
-
-    return img
-
 
 # Load the trained model
 model = load_model("mask_detection_model.h5")
 print("Model loaded successfully!")
 
-# Define dataset path
-with_mask_path = "archive/data/with_mask"
-without_mask_path = "archive/data/without_mask"
+# Load the face detection model (Haar cascade)
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
 
-# Get all image filenames from both categories
-with_mask_files = os.listdir(with_mask_path)
-without_mask_files = os.listdir(without_mask_path)
+def prepare_image(face, img_size=(224, 224)):
+    """ Prepares the detected face image for model prediction. """
+    face = cv2.resize(face, img_size)
+    face = face / 255.0  # Normalize
+    face = np.expand_dims(face, axis=0)  # Add batch dimension
+    return face
 
-# Shuffle and select 50 random images from each category
-with_mask_selected = random.sample(with_mask_files, 50)
-without_mask_selected = random.sample(without_mask_files, 50)
+# Open webcam
+cap = cv2.VideoCapture(0)
 
-# Combine both selected lists
-selected_images = with_mask_selected + without_mask_selected
-random.shuffle(selected_images)  # Shuffle the selected images to randomize the output
-
-# Iterate over selected images and make predictions
-for image_name in selected_images:
-    # Create the full path to the image
-    if image_name in with_mask_selected:
-        image_path = os.path.join(with_mask_path, image_name)
-        label = "🟢"  # with_mask category symbol
-    else:
-        image_path = os.path.join(without_mask_path, image_name)
-        label = "🔴"  # without_mask category symbol
-
-    # Prepare image for prediction
-    img = prepare_image(image_path)
-
-    if img is not None:
-        # Make a prediction
-        prediction = model.predict(img)
-
-        # Check if the prediction is greater than or equal to 0.5
-        if prediction >= 0.5:
-            print(
-                f"{image_name} {label} - Predicted: Without Mask 🔴"
-            )  # Predicted as "Without Mask"
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+    
+    # Convert frame to grayscale for face detection
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60))
+    
+    for (x, y, w, h) in faces:
+        face = frame[y:y+h, x:x+w]  # Extract face region
+        prepared_face = prepare_image(face)
+        
+        # Predict mask or no mask
+        prediction = model.predict(prepared_face)[0][0]
+        
+        # Determine label and color
+        if prediction > 0.5:
+            label = "No Mask"
+            color = (0, 0, 255)  # Red
         else:
-            print(
-                f"{image_name} {label} - Predicted: With Mask 🟢"
-            )  # Predicted as "With Mask"
+            label = "Mask"
+            color = (0, 255, 0)  # Green
+        
+        # Draw rectangle and label
+        cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
+        cv2.putText(frame, label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
+    
+    # Show frame
+    cv2.imshow("Mask Detection", frame)
+    
+    # Press 'q' to exit
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+    if cv2.getWindowProperty("Mask Detection", cv2.WND_PROP_VISIBLE) < 1:
+        break
+
+# Release resources
+cap.release()
+cv2.destroyAllWindows()
