@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras.layers import Dropout
+from tensorflow.keras.callbacks import EarlyStopping
 
 DATASET_PATH = "archive\data"
 CATEGORIES = ["with_mask", "without_mask"]  # Define labels
@@ -55,6 +56,17 @@ split_index = int(0.7 * len(data)) # split_index = 70% ของข้อมู�
 data_train, data_test = data[:split_index], data[split_index:]
 labels_train, labels_test = labels[:split_index], labels[split_index:]
 
+mask_indices = np.where(labels_train == 0)[0]  # Indices of "With Mask"
+extra_mask_images = data_train[mask_indices]
+extra_mask_labels = labels_train[mask_indices]
+
+# Append extra mask images to dataset
+data_train = np.concatenate((data_train, extra_mask_images), axis=0)
+labels_train = np.concatenate((labels_train, extra_mask_labels), axis=0)
+
+# Shuffle dataset again
+data_train, labels_train = shuffle(data_train, labels_train, random_state=42)
+
 print(f"Train data: {data_train.shape}, Train labels: {labels_train.shape}")
 print(f"Test data: {data_test.shape}, Test labels: {labels_test.shape}")
 
@@ -73,21 +85,27 @@ datagen = ImageDataGenerator(
     horizontal_flip=True,
     fill_mode='nearest'
 )
+#ลอง ลด dropout
+#ลอง ลด l2
+#ลอง เพิ่ม layers.BatchNormalization(),
+#ลอง เพิ่ม # optimizer = keras.optimizers.Adam(learning_rate=0.0005)
 
 # Fit data generator to training data
 datagen.fit(data_train)
+print(len(data_train))
 # Define the CNN architecture
 model = keras.Sequential([
-    layers.Conv2D(16, (3, 3), activation='relu', input_shape=(224, 224, 3), kernel_regularizer=l2(0.01)),
-    Dropout(0.5),
+    layers.Conv2D(32, (3, 3), activation='relu', input_shape=(224, 224, 3), kernel_regularizer=l2(0.1)),
     layers.MaxPooling2D((2, 2)),
+    Dropout(0.15),
 
-    layers.Conv2D(32, (3, 3), activation='relu', kernel_regularizer=l2(0.01)),
+    layers.Conv2D(64, (3, 3), activation='relu', kernel_regularizer=l2(0.1)),
     layers.MaxPooling2D((2, 2)),
-    Dropout(0.5),
-    layers.Conv2D(64, (3, 3), activation='relu', kernel_regularizer=l2(0.01)),
+    # layers.BatchNormalization(),
+    Dropout(0.15),
+    layers.Conv2D(128, (3, 3), activation='relu', kernel_regularizer=l2(0.1)),
     layers.MaxPooling2D((2, 2)),
-    Dropout(0.3),
+    Dropout(0.15),
     layers.Flatten(),
     layers.Dense(64, activation='relu'),
     layers.Dropout(0.5),  # Regularization to prevent overfitting
@@ -95,15 +113,16 @@ model = keras.Sequential([
 ])
 
 model.summary()  # Print model architecture
-
+# optimizer = keras.optimizers.Adam(learning_rate=0.0005)
 # Compile model
-model.compile(optimizer='adam',
+model.compile(optimizer="adam",
               loss='binary_crossentropy',
               metrics=['accuracy'])
 
 # Train model using NumPy arrays
+early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
 lr_scheduler = ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=3, min_lr=0.0001)
-history = model.fit(data_train, labels_train, epochs=20, batch_size=14, validation_data=(data_test, labels_test), callbacks=[lr_scheduler])
+history = model.fit(datagen.flow(data_train,labels_train,batch_size=16), epochs=20,  validation_data=(data_test, labels_test), callbacks=[lr_scheduler])
 
 
 model.save("mask_detection_model.h5")
