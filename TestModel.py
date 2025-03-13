@@ -4,10 +4,11 @@ import numpy as np
 from tensorflow.keras.models import load_model
 
 # Load the trained model
-model = load_model("mask_detection_model_success.h5")
+model = load_model("mask_detection_model.h5", compile=False)
+model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
 print("Model loaded successfully!")
-model.compile() 
-# Initialize MediaPipe Face Detection
+
+# Initialize MediaPipe Face Detection google Ai
 mp_face_detection = mp.solutions.face_detection
 mp_drawing = mp.solutions.drawing_utils
 
@@ -24,9 +25,8 @@ def prepare_image(face, img_size=(224, 224)):
 # Open webcam
 cap = cv2.VideoCapture(1, cv2.CAP_DSHOW) 
 
-
-
 with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detection:  # Increased confidence
+
     while True:
         ret, frame = cap.read()
         if not ret:
@@ -62,7 +62,7 @@ with mp_face_detection.FaceDetection(min_detection_confidence=0.5) as face_detec
                     else:
                         label = "Mask"
                         color = (0, 255, 0)  # Green
-                    
+                    print(f"Prediction value: {prediction}")
                     # Draw rectangle and label
                     cv2.rectangle(frame_bgr, (x, y), (x+w, y+h), color, 2)
                     cv2.putText(frame_bgr, label, (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 0.8, color, 2)
